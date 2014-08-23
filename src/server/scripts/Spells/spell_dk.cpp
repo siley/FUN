@@ -62,7 +62,8 @@ enum DeathKnightSpells
     SPELL_DK_UNHOLY_PRESENCE                    = 48265,
     SPELL_DK_UNHOLY_PRESENCE_TRIGGERED          = 49772,
     SPELL_DK_WILL_OF_THE_NECROPOLIS_TALENT_R1   = 49189,
-    SPELL_DK_WILL_OF_THE_NECROPOLIS_AURA_R1     = 52284
+    SPELL_DK_WILL_OF_THE_NECROPOLIS_AURA_R1     = 52284,
+    SPELL_DK_SPELL_GHOUL_AVOIDANCE              = 62137,
 };
 
 enum DeathKnightSpellIcons
@@ -1176,7 +1177,8 @@ class spell_dk_raise_dead : public SpellScriptLoader
                 if (!sSpellMgr->GetSpellInfo(spellInfo->Effects[EFFECT_1].CalcValue())
                     || !sSpellMgr->GetSpellInfo(spellInfo->Effects[EFFECT_2].CalcValue())
                     || !sSpellMgr->GetSpellInfo(SPELL_DK_RAISE_DEAD_USE_REAGENT)
-                    || !sSpellMgr->GetSpellInfo(SPELL_DK_MASTER_OF_GHOULS))
+                    || !sSpellMgr->GetSpellInfo(SPELL_DK_MASTER_OF_GHOULS)
+                    || !sSpellMgr->GetSpellInfo(SPELL_DK_SPELL_GHOUL_AVOIDANCE))
                     return false;
                 return true;
             }
@@ -1273,6 +1275,16 @@ class spell_dk_raise_dead : public SpellScriptLoader
                 GetCaster()->CastSpell(targets, spellInfo, NULL, TRIGGERED_FULL_MASK);
             }
 
+            void HandleAfterHit()
+            {
+                Unit* caster = GetCaster();
+                if (Unit* pet = caster->ToPlayer()->GetPet())
+                    if (AuraEffect * aurEff = caster->GetAuraEffect(SPELL_AURA_ADD_FLAT_MODIFIER, SPELLFAMILY_DEATHKNIGHT, 2718, 0)) {
+                        int32 bp = aurEff->GetAmount() / 1000;
+                        pet->CastCustomSpell(pet, SPELL_DK_SPELL_GHOUL_AVOIDANCE, &bp, NULL, NULL, true);
+                }
+            }
+
             void Register() override
             {
                 OnCheckCast += SpellCheckCastFn(spell_dk_raise_dead_SpellScript::CheckCast);
@@ -1281,6 +1293,7 @@ class spell_dk_raise_dead : public SpellScriptLoader
                 OnCast += SpellCastFn(spell_dk_raise_dead_SpellScript::ConsumeReagents);
                 OnEffectHitTarget += SpellEffectFn(spell_dk_raise_dead_SpellScript::HandleRaiseDead, EFFECT_1, SPELL_EFFECT_SCRIPT_EFFECT);
                 OnEffectHitTarget += SpellEffectFn(spell_dk_raise_dead_SpellScript::HandleRaiseDead, EFFECT_2, SPELL_EFFECT_DUMMY);
+                AfterHit += SpellHitFn(spell_dk_raise_dead_SpellScript::HandleAfterHit);
             }
 
         private:
